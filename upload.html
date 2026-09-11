@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>アップロード · SeaTubes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep-void: #03070c;
+    --deep-panel: #0a141f;
+    --deep-panel-2: #0e1c2b;
+    --line: rgba(120,160,175,0.16);
+    --line-strong: rgba(120,160,175,0.3);
+    --foam: #d7f3ee;
+    --foam-dim: #8aa5ae;
+    --bio: #59e6c7;
+    --bio-dim: #2f8f7d;
+    --coral: #ff7a63;
+    --danger: #ff6b6b;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; min-height:100%; background: var(--deep-void);
+    color: var(--foam); font-family:'Inter', sans-serif;
+  }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
+
+  .void-glow{
+    position: fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(55% 38% at 12% 0%, rgba(89,230,199,0.10), transparent 60%),
+      radial-gradient(45% 32% at 95% 100%, rgba(89,230,199,0.07), transparent 60%);
+  }
+
+  .wrap{
+    position:relative; z-index:1;
+    max-width: 480px; margin: 0 auto;
+    min-height: 100dvh;
+    padding: calc(env(safe-area-inset-top,0px) + 22px) 20px calc(env(safe-area-inset-bottom,0px) + 40px);
+    display:flex; flex-direction:column;
+  }
+
+  header{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 30px; }
+  .brand{ display:flex; align-items:center; gap:8px; text-decoration:none; }
+  .brand svg{ width:24px; height:24px; color:var(--bio); }
+  .brand span{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1rem; color:var(--foam); }
+  .back-link{
+    font-size:0.82rem; color:var(--foam-dim); text-decoration:none;
+    display:flex; align-items:center; gap:5px;
+  }
+  .back-link svg{ width:14px; height:14px; }
+
+  .hero{ margin-bottom: 28px; }
+  .hero .eyebrow{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:0.72rem; color:var(--bio); margin-bottom:10px;
+  }
+  .hero .eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:var(--bio); box-shadow:0 0 8px var(--bio); }
+  .hero h1{ font-size:1.6rem; font-weight:600; margin:0 0 8px; letter-spacing:-0.01em; line-height:1.25; }
+  .hero p{ font-size:0.9rem; color:var(--foam-dim); line-height:1.6; margin:0; max-width: 40ch; }
+
+  form{ display:flex; flex-direction:column; gap:18px; flex:1; }
+
+  .field label{
+    display:block; font-size:0.8rem; color:var(--foam-dim); margin-bottom:8px;
+  }
+  .field input[type=text], .field textarea{
+    width:100%; background: var(--deep-panel);
+    border:1px solid var(--line); border-radius:12px;
+    color:var(--foam); font-family:'Inter', sans-serif; font-size:0.95rem;
+    padding: 13px 14px; outline:none;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .field input[type=text]:focus, .field textarea:focus{
+    border-color: var(--bio-dim); background: var(--deep-panel-2);
+  }
+  .field textarea{ resize:vertical; min-height:76px; line-height:1.5; }
+  .char-count{ font-size:0.72rem; color: var(--foam-dim); text-align:right; margin-top:5px; }
+
+  .dropzone{
+    position:relative;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 16px;
+    background: var(--deep-panel);
+    padding: 30px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag{ border-color: var(--bio); background: var(--deep-panel-2); }
+  .dropzone input[type=file]{
+    position:absolute; inset:0; opacity:0; cursor:pointer;
+  }
+  .dropzone .dz-icon{
+    width:38px; height:38px; margin:0 auto 12px; color: var(--bio-dim);
+  }
+  .dropzone .dz-title{ font-size:0.92rem; color:var(--foam); font-weight:500; margin-bottom:4px; }
+  .dropzone .dz-sub{ font-size:0.78rem; color:var(--foam-dim); }
+
+  .preview{
+    display:none;
+    border-radius:16px; overflow:hidden;
+    background:#000; border:1px solid var(--line);
+    position:relative;
+  }
+  .preview.show{ display:block; }
+  .preview video{ width:100%; max-height: 360px; display:block; object-fit:contain; background:#000; }
+  .preview .file-meta{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 14px; background: var(--deep-panel);
+  }
+  .preview .file-meta span{ font-size:0.78rem; color:var(--foam-dim); }
+  .preview .remove-btn{
+    background:none; border:none; color:var(--foam-dim); font-size:0.78rem;
+    cursor:pointer; text-decoration:underline;
+  }
+  .duration-warn{
+    display:none; align-items:center; gap:8px;
+    font-size:0.78rem; color: #ffb86b;
+    background: rgba(255,184,107,0.08); border:1px solid rgba(255,184,107,0.25);
+    padding:9px 12px; border-radius:10px; margin-top:10px;
+  }
+  .duration-warn.show{ display:flex; }
+  .duration-warn svg{ width:15px; height:15px; flex-shrink:0; }
+
+  .submit-btn{
+    margin-top:6px;
+    width:100%; border:none; border-radius:999px;
+    background: var(--bio); color:#02201a;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.95rem;
+    padding: 15px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    transition: transform .1s ease, opacity .15s ease;
+  }
+  .submit-btn:active{ transform: scale(0.98); }
+  .submit-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .submit-btn svg{ width:17px; height:17px; }
+
+  .progress-wrap{
+    margin-top:14px; display:none;
+  }
+  .progress-wrap.show{ display:block; }
+  .progress-track{
+    height:6px; border-radius:999px; background: var(--deep-panel-2);
+    overflow:hidden; border:1px solid var(--line);
+  }
+  .progress-fill{
+    height:100%; width:0%; background: var(--bio);
+    box-shadow: 0 0 8px var(--bio);
+    transition: width .15s ease;
+  }
+  .progress-label{
+    display:flex; justify-content:space-between;
+    font-size:0.76rem; color:var(--foam-dim); margin-top:7px;
+  }
+
+  .status-msg{
+    display:none; align-items:flex-start; gap:10px;
+    font-size:0.85rem; line-height:1.5; padding:13px 14px; border-radius:12px;
+    margin-top:4px;
+  }
+  .status-msg.show{ display:flex; }
+  .status-msg svg{ width:17px; height:17px; flex-shrink:0; margin-top:1px; }
+  .status-msg.error{ background: rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.25); color:#ffb3b3; }
+  .status-msg.success{ background: rgba(89,230,199,0.08); border:1px solid rgba(89,230,199,0.3); color: var(--bio); }
+
+  .success-view{
+    display:none; flex-direction:column; align-items:center; text-align:center;
+    padding: 40px 10px; flex:1; justify-content:center;
+  }
+  .success-view.show{ display:flex; }
+  .success-view .check{
+    width:60px; height:60px; border-radius:50%;
+    background: rgba(89,230,199,0.1); border:1px solid rgba(89,230,199,0.35);
+    display:flex; align-items:center; justify-content:center; margin-bottom:20px;
+    color: var(--bio);
+  }
+  .success-view .check svg{ width:26px; height:26px; }
+  .success-view h2{ font-size:1.25rem; margin:0 0 8px; }
+  .success-view p{ font-size:0.88rem; color:var(--foam-dim); margin:0 0 26px; }
+  .success-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .success-actions a, .success-actions button{
+    font-family:'Space Grotesk', sans-serif; font-size:0.85rem; font-weight:600;
+    padding: 11px 20px; border-radius:999px; text-decoration:none; cursor:pointer; border:none;
+  }
+  .success-actions .primary{ background: var(--bio); color:#02201a; }
+  .success-actions .secondary{ background: transparent; color:var(--foam); border:1px solid var(--line-strong); }
+
+  #uploadForm.hide{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="void-glow"></div>
+<div class="wrap">
+  <header>
+    <a class="brand" href="index.html">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M2 17c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2 12c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/><path d="M9 3c1.5 2 1.5 4 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>SeaTubes</span>
+    </a>
+    <a class="back-link" href="index.html">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      フィードに戻る
+    </a>
+  </header>
+
+  <div class="hero">
+    <div class="eyebrow"><span class="dot"></span>NEW UPLOAD</div>
+    <h1>海に一本、流す。</h1>
+    <p>1分未満のショート動画をアップロードしてください。タイトルと概要を添えて、SeaTubesの海に投稿できます。</p>
+  </div>
+
+  <form id="uploadForm">
+    <div class="field">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="video/*" />
+        <svg class="dz-icon" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <div class="dz-title">動画を選択またはドロップ</div>
+        <div class="dz-sub">MP4 / MOV 推奨・1分未満のショート動画</div>
+      </div>
+
+      <div class="preview" id="preview">
+        <video id="previewVideo" playsinline muted controls></video>
+        <div class="file-meta">
+          <span id="fileMetaText">-</span>
+          <button type="button" class="remove-btn" id="removeBtn">削除</button>
+        </div>
+      </div>
+
+      <div class="duration-warn" id="durationWarn">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>この動画は1分を超えています。ショート動画としての投稿を想定しています。</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="titleInput">題名</label>
+      <input type="text" id="titleInput" maxlength="80" placeholder="例: 夕焼けのビーチクルーズ" required />
+    </div>
+
+    <div class="field">
+      <label for="descInput">概要欄</label>
+      <textarea id="descInput" maxlength="300" placeholder="動画の説明を書きましょう（任意）"></textarea>
+      <div class="char-count"><span id="descCount">0</span> / 300</div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      海に流す
+    </button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label"><span id="progressStage">アップロード中…</span><span id="progressPct">0%</span></div>
+    </div>
+
+    <div class="status-msg error" id="errorMsg">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5m0 3h.01M12 3l9 16H3L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="errorText"></span>
+    </div>
+  </form>
+
+  <div class="success-view" id="successView">
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2>投稿が完了しました</h2>
+    <p>動画がSeaTubesの海に流れ始めました。</p>
+    <div class="success-actions">
+      <a class="primary" href="index.html">フィードで見る</a>
+      <button class="secondary" id="uploadAnotherBtn">もう一本投稿する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLOUD_NAME = "q9hmvoja";
+const UPLOAD_PRESET = "videos";
+const SUPABASE_URL = "https://qyxjzgkkriyxdezdlfir.supabase.co";
+const SUPABASE_KEY = "sb_publishable_zB66kdVRi0F3SEGKXOhKHw_hMJ0eWj0";
+
+const form = document.getElementById('uploadForm');
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const previewVideo = document.getElementById('previewVideo');
+const fileMetaText = document.getElementById('fileMetaText');
+const removeBtn = document.getElementById('removeBtn');
+const durationWarn = document.getElementById('durationWarn');
+const titleInput = document.getElementById('titleInput');
+const descInput = document.getElementById('descInput');
+const descCount = document.getElementById('descCount');
+const submitBtn = document.getElementById('submitBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const progressStage = document.getElementById('progressStage');
+const progressPct = document.getElementById('progressPct');
+const errorMsg = document.getElementById('errorMsg');
+const errorText = document.getElementById('errorText');
+const successView = document.getElementById('successView');
+const uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
+
+let selectedFile = null;
+
+function formatBytes(bytes){
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function handleFile(file){
+  if(!file || !file.type.startsWith('video/')){
+    showError('動画ファイルを選択してください。');
+    return;
+  }
+  selectedFile = file;
+  const url = URL.createObjectURL(file);
+  previewVideo.src = url;
+  preview.classList.add('show');
+  dropzone.style.display = 'none';
+  fileMetaText.textContent = `${file.name} · ${formatBytes(file.size)}`;
+  hideError();
+
+  previewVideo.addEventListener('loadedmetadata', function onMeta(){
+    previewVideo.removeEventListener('loadedmetadata', onMeta);
+    if(previewVideo.duration > 60){
+      durationWarn.classList.add('show');
+    } else {
+      durationWarn.classList.remove('show');
+    }
+  });
+}
+
+fileInput.addEventListener('change', (e) => {
+  if(e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+['dragenter','dragover'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+});
+['dragleave','drop'].forEach(evt => {
+  dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); });
+});
+dropzone.addEventListener('drop', (e) => {
+  const file = e.dataTransfer.files[0];
+  if(file) handleFile(file);
+});
+
+removeBtn.addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  previewVideo.src = '';
+  preview.classList.remove('show');
+  durationWarn.classList.remove('show');
+  dropzone.style.display = 'block';
+});
+
+descInput.addEventListener('input', () => {
+  descCount.textContent = descInput.value.length;
+});
+
+function showError(msg){
+  errorText.textContent = msg;
+  errorMsg.classList.add('show');
+}
+function hideError(){
+  errorMsg.classList.remove('show');
+}
+
+function uploadToCloudinary(file, onProgress){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if(e.lengthComputable){
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.onload = () => {
+      if(xhr.status >= 200 && xhr.status < 300){
+        try{
+          resolve(JSON.parse(xhr.responseText));
+        }catch(err){
+          reject(new Error('Cloudinaryの応答を解析できませんでした。'));
+        }
+      } else {
+        let message = 'Cloudinaryへのアップロードに失敗しました。';
+        try{
+          const parsed = JSON.parse(xhr.responseText);
+          if(parsed && parsed.error && parsed.error.message){
+            message = parsed.error.message;
+          }
+        }catch(e){}
+        reject(new Error(message));
+      }
+    };
+    xhr.onerror = () => reject(new Error('ネットワークエラーが発生しました。'));
+    xhr.send(formData);
+  });
+}
+
+async function saveToSupabase({ title, description, video_url }){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/videos`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify({ title, description, video_url })
+  });
+  if(!res.ok){
+    const text = await res.text();
+    throw new Error(`Supabaseへの保存に失敗しました。${text}`);
+  }
+  return res.json();
+}
+
+function setSubmitting(isSubmitting){
+  submitBtn.disabled = isSubmitting;
+  if(isSubmitting){
+    submitBtn.innerHTML = '流しています…';
+    progressWrap.classList.add('show');
+  } else {
+    submitBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      海に流す`;
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError();
+
+  if(!selectedFile){
+    showError('動画ファイルを選択してください。');
+    return;
+  }
+  const title = titleInput.value.trim();
+  if(!title){
+    showError('題名を入力してください。');
+    return;
+  }
+
+  setSubmitting(true);
+  progressFill.style.width = '0%';
+  progressPct.textContent = '0%';
+  progressStage.textContent = 'Cloudinaryへアップロード中…';
+
+  try{
+    const cloudRes = await uploadToCloudinary(selectedFile, (pct) => {
+      progressFill.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
+    });
+
+    progressStage.textContent = 'SeaTubesに保存中…';
+    progressFill.style.width = '100%';
+    progressPct.textContent = '100%';
+
+    await saveToSupabase({
+      title,
+      description: descInput.value.trim() || null,
+      video_url: cloudRes.secure_url
+    });
+
+    form.classList.add('hide');
+    successView.classList.add('show');
+  }catch(err){
+    console.error(err);
+    showError(err.message || 'アップロード中にエラーが発生しました。');
+    setSubmitting(false);
+  }
+});
+
+uploadAnotherBtn.addEventListener('click', () => {
+  form.reset();
+  selectedFile = null;
+  previewVideo.src = '';
+  preview.classList.remove('show');
+  durationWarn.classList.remove('show');
+  dropzone.style.display = 'block';
+  descCount.textContent = '0';
+  progressWrap.classList.remove('show');
+  progressFill.style.width = '0%';
+  setSubmitting(false);
+  successView.classList.remove('show');
+  form.classList.remove('hide');
+});
+</script>
+</body>
+</html>

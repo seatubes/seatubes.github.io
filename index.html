@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SeaTubes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep-void: #03070c;
+    --deep-panel: #0a141f;
+    --deep-panel-2: #0e1c2b;
+    --line: rgba(120,160,175,0.16);
+    --foam: #d7f3ee;
+    --foam-dim: #8aa5ae;
+    --bio: #59e6c7;
+    --bio-dim: #2f8f7d;
+    --coral: #ff7a63;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; height:100%; background: var(--deep-void);
+    color: var(--foam);
+    font-family: 'Inter', sans-serif;
+    overscroll-behavior: none;
+  }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
+
+  /* subtle caustic light drifting in the void */
+  .void-glow{
+    position: fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(60% 40% at 15% 8%, rgba(89,230,199,0.10), transparent 60%),
+      radial-gradient(50% 35% at 90% 85%, rgba(89,230,199,0.06), transparent 60%);
+  }
+
+  #feed{
+    position: relative; z-index:1;
+    height: 100dvh; width: 100%;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+  #feed::-webkit-scrollbar{ display:none; }
+
+  .slide{
+    position: relative;
+    height: 100dvh; width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--deep-panel);
+    overflow:hidden;
+  }
+
+  .slide video{
+    position:absolute; top:50%; left:50%;
+    transform: translate(-50%, -50%);
+    width:100%; height:100%;
+    object-fit: contain;
+    background: #000;
+  }
+
+  /* Blurred fill behind the video so letterboxed edges never look empty */
+  .slide .bg-fill{
+    position:absolute; inset:-5%;
+    width:110%; height:110%;
+    object-fit: cover;
+    filter: blur(38px) brightness(0.45) saturate(1.2);
+    transform: scale(1.1);
+  }
+
+  .scrim{
+    position:absolute; left:0; right:0; bottom:0;
+    height:46%;
+    background: linear-gradient(to top, rgba(2,6,10,0.92) 0%, rgba(2,6,10,0.55) 45%, transparent 100%);
+    pointer-events:none;
+  }
+  .scrim-top{
+    position:absolute; left:0; right:0; top:0;
+    height:110px;
+    background: linear-gradient(to bottom, rgba(2,6,10,0.75), transparent);
+    pointer-events:none;
+  }
+
+  .meta{
+    position:absolute; left:20px; right:88px; bottom:34px;
+    z-index:2;
+  }
+  .meta .title{
+    font-size: 1.15rem; font-weight:600; color:var(--foam);
+    line-height:1.35; margin:0 0 6px;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.5);
+  }
+  .meta .desc{
+    font-size: 0.9rem; color: var(--foam-dim); line-height:1.5;
+    margin:0; max-width: 34ch;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.5);
+  }
+  .meta .tag{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:0.72rem; color:var(--bio);
+    letter-spacing:0.02em; margin-bottom:10px;
+  }
+  .tag .dot{ width:6px; height:6px; border-radius:50%; background:var(--bio); box-shadow:0 0 8px var(--bio); }
+
+  .side-rail{
+    position:absolute; right:14px; bottom:40px; z-index:3;
+    display:flex; flex-direction:column; align-items:center; gap:22px;
+  }
+  .rail-btn{
+    width:46px; height:46px; border-radius:50%;
+    background: rgba(10,20,31,0.55);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--foam);
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .rail-btn:active{ transform: scale(0.9); }
+  .rail-btn.liked{ color: var(--coral); border-color: rgba(255,122,99,0.5); }
+  .rail-btn svg{ width:22px; height:22px; }
+
+  .mute-btn{
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:16px; z-index:3;
+    width:40px; height:40px; border-radius:50%;
+    background: rgba(10,20,31,0.55); border:1px solid var(--line);
+    backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:center; color:var(--foam);
+  }
+  .mute-btn svg{ width:18px; height:18px; }
+
+  .brand{
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 20px); left:20px; z-index:3;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .mark{
+    width:26px; height:26px; color: var(--bio);
+  }
+  .brand span{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.02rem;
+    letter-spacing: -0.01em; color: var(--foam);
+  }
+
+  .upload-fab{
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:66px; z-index:3;
+    display:flex; align-items:center; gap:6px;
+    height:38px; padding: 0 15px 0 12px;
+    border-radius:999px;
+    background: rgba(10,20,31,0.55);
+    border:1px solid var(--line);
+    backdrop-filter: blur(6px);
+    color: var(--foam);
+    text-decoration:none;
+    font-family:'Space Grotesk', sans-serif; font-size:0.82rem; font-weight:600;
+    transition: border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .upload-fab:active{ transform: scale(0.95); }
+  .upload-fab svg{ width:16px; height:16px; color: var(--bio); }
+
+  .progress-ring{
+    position:absolute; bottom:0; left:0; right:0; height:2px; z-index:3;
+    background: rgba(255,255,255,0.08);
+  }
+  .progress-ring i{
+    display:block; height:100%; width:0%;
+    background: var(--bio);
+    box-shadow: 0 0 6px var(--bio);
+  }
+
+  /* Empty / loading / error states */
+  .center-state{
+    position:relative; z-index:2; text-align:center; padding: 0 32px;
+    max-width: 420px;
+  }
+  .center-state .glyph{
+    width:52px; height:52px; margin: 0 auto 18px; color: var(--bio-dim);
+  }
+  .center-state h2{
+    font-size:1.3rem; font-weight:600; margin: 0 0 10px; color:var(--foam);
+  }
+  .center-state p{
+    font-size:0.92rem; color:var(--foam-dim); line-height:1.6; margin:0 0 22px;
+  }
+  .cta-link{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 11px 22px; border-radius: 999px;
+    background: var(--bio); color: #02201a; font-weight:600; font-size:0.88rem;
+    text-decoration:none; font-family:'Space Grotesk', sans-serif;
+  }
+
+  .spinner{
+    width:28px; height:28px; border-radius:50%;
+    border: 2px solid rgba(89,230,199,0.2);
+    border-top-color: var(--bio);
+    animation: spin 0.9s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .play-badge{
+    position:absolute; z-index:2; width:64px; height:64px; border-radius:50%;
+    background: rgba(3,7,12,0.55); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--foam);
+    opacity:0; transition: opacity .15s ease;
+  }
+  .play-badge svg{ width:26px; height:26px; margin-left:3px; }
+  .play-badge.show{ opacity:1; }
+
+  @media (min-width: 640px){
+    html, body{ background: var(--deep-void); }
+    body{
+      display:flex; align-items:center; justify-content:center;
+      min-height: 100vh;
+    }
+    #feed{
+      max-width: 430px;
+      height: 92vh;
+      max-height: 900px;
+      margin: 0;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(89,230,199,0.04);
+    }
+    .slide{ height: 100%; border-radius: 28px; }
+    .slide:first-child{ border-radius: 28px 28px 0 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="void-glow"></div>
+<div id="feed"></div>
+
+<script>
+const SUPABASE_URL = "https://qyxjzgkkriyxdezdlfir.supabase.co";
+const SUPABASE_KEY = "sb_publishable_zB66kdVRi0F3SEGKXOhKHw_hMJ0eWj0";
+
+const feedEl = document.getElementById('feed');
+
+const ICONS = {
+  logo: `<svg viewBox="0 0 24 24" fill="none" class="mark"><path d="M2 17c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2 12c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/><path d="M9 3c1.5 2 1.5 4 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7.5-4.6-10-9.3C.5 7.2 2.4 3.8 6 3.4c2.1-.2 3.9.9 6 3.1 2.1-2.2 3.9-3.3 6-3.1 3.6.4 5.5 3.8 4 7.3C19.5 15.4 12 20 12 20z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+  heartFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7.5-4.6-10-9.3C.5 7.2 2.4 3.8 6 3.4c2.1-.2 3.9.9 6 3.1 2.1-2.2 3.9-3.3 6-3.1 3.6.4 5.5 3.8 4 7.3C19.5 15.4 12 20 12 20z"/></svg>`,
+  share: `<svg viewBox="0 0 24 24" fill="none"><path d="M8.5 12.5 15.5 8M8.5 11.5 15.5 16M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  volumeOn: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 9.5a4 4 0 0 1 0 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  volumeOff: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M15.5 9.5 20 14M20 9.5l-4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  wave: `<svg viewBox="0 0 24 24" fill="none" class="glyph"><path d="M2 8c2.5 2.5 5 2.5 7.5 0S14.5 5.5 17 8s5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2 14c2.5 2.5 5 2.5 7.5 0s5-2.5 7.5 0 5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2 20c2.5 2.5 5 2.5 7.5 0s5-2.5 7.5 0 5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/></svg>`,
+  play: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`,
+  plus: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+};
+
+const brandHTML = `
+  <div class="brand">${ICONS.logo}<span>SeaTubes</span></div>
+  <a class="upload-fab" href="upload.html">${ICONS.plus}投稿</a>
+`;
+
+function renderCenterState(glyph, title, desc, ctaHTML){
+  feedEl.innerHTML = `
+    <div class="slide" style="scroll-snap-align:none;">
+      ${brandHTML}
+      <div class="center-state">
+        ${glyph}
+        <h2>${title}</h2>
+        <p>${desc}</p>
+        ${ctaHTML || ''}
+      </div>
+    </div>`;
+}
+
+function renderLoading(){
+  renderCenterState(
+    `<div class="spinner"></div>`,
+    '潜っています…',
+    '動画を読み込み中です。少しお待ちください。'
+  );
+}
+
+function renderEmpty(){
+  renderCenterState(
+    ICONS.wave,
+    'まだ動画がありません',
+    '最初の一本を投稿して、SeaTubesの海を満たしましょう。',
+    `<a class="cta-link" href="upload.html">${ICONS.play}動画をアップロード</a>`
+  );
+}
+
+function renderError(msg){
+  renderCenterState(
+    ICONS.wave,
+    '読み込みに失敗しました',
+    msg || '通信状態を確認して、もう一度お試しください。',
+    `<a class="cta-link" href="javascript:location.reload()">再読み込み</a>`
+  );
+}
+
+function escapeHTML(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : str;
+  return div.innerHTML;
+}
+
+let isMuted = true;
+
+function buildSlide(video, index){
+  const el = document.createElement('div');
+  el.className = 'slide';
+  el.dataset.index = index;
+
+  el.innerHTML = `
+    <video
+      class="bg-fill"
+      src="${escapeHTML(video.video_url)}"
+      playsinline
+      loop
+      muted
+      preload="metadata"
+      aria-hidden="true"
+      tabindex="-1"
+    ></video>
+    <video
+      src="${escapeHTML(video.video_url)}"
+      playsinline
+      loop
+      muted
+      preload="metadata"
+    ></video>
+    <div class="scrim-top"></div>
+    <div class="scrim"></div>
+    ${brandHTML}
+    <button class="mute-btn" aria-label="音声切り替え">${isMuted ? ICONS.volumeOff : ICONS.volumeOn}</button>
+    <div class="play-badge">${ICONS.play}</div>
+    <div class="meta">
+      <div class="tag"><span class="dot"></span>SHORT</div>
+      <p class="title">${escapeHTML(video.title || '無題')}</p>
+      ${video.description ? `<p class="desc">${escapeHTML(video.description)}</p>` : ''}
+    </div>
+    <div class="side-rail">
+      <button class="rail-btn like-btn" aria-label="いいね">${ICONS.heart}</button>
+      <button class="rail-btn share-btn" aria-label="共有">${ICONS.share}</button>
+    </div>
+    <div class="progress-ring"><i></i></div>
+  `;
+
+  const vid = el.querySelector('video:not(.bg-fill)');
+  const bgVid = el.querySelector('video.bg-fill');
+  const muteBtn = el.querySelector('.mute-btn');
+  const likeBtn = el.querySelector('.like-btn');
+  const shareBtn = el.querySelector('.share-btn');
+  const playBadge = el.querySelector('.play-badge');
+  const progressFill = el.querySelector('.progress-ring i');
+
+  vid.muted = isMuted;
+
+  vid.addEventListener('timeupdate', () => {
+    if(vid.duration){
+      progressFill.style.width = (vid.currentTime / vid.duration * 100) + '%';
+    }
+    // keep background copy loosely in sync without fighting the main clock
+    if(bgVid.paused === vid.paused === false && Math.abs(bgVid.currentTime - vid.currentTime) > 0.35){
+      bgVid.currentTime = vid.currentTime;
+    }
+  });
+
+  el.addEventListener('click', (e) => {
+    if(e.target.closest('.mute-btn') || e.target.closest('.rail-btn')) return;
+    if(vid.paused){
+      vid.play();
+      bgVid.play();
+      playBadge.classList.remove('show');
+    } else {
+      vid.pause();
+      bgVid.pause();
+      playBadge.classList.add('show');
+    }
+  });
+
+  muteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isMuted = !isMuted;
+    document.querySelectorAll('#feed video:not(.bg-fill)').forEach(v => v.muted = isMuted);
+    document.querySelectorAll('.mute-btn').forEach(b => {
+      b.innerHTML = isMuted ? ICONS.volumeOff : ICONS.volumeOn;
+    });
+  });
+
+  let liked = false;
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    liked = !liked;
+    likeBtn.classList.toggle('liked', liked);
+    likeBtn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
+  });
+
+  shareBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const shareUrl = `${location.origin}${location.pathname}?videos=${video.id}`;
+    if(navigator.share){
+      try{ await navigator.share({ title: video.title || 'SeaTubes', url: shareUrl }); }
+      catch(err){ /* cancelled */ }
+    } else {
+      try{
+        await navigator.clipboard.writeText(shareUrl);
+        shareBtn.innerHTML = '✓';
+        setTimeout(() => shareBtn.innerHTML = ICONS.share, 1200);
+      } catch(err){}
+    }
+  });
+
+  return { el, vid };
+}
+
+async function fetchVideos(){
+  const params = new URLSearchParams(location.search);
+  const single = params.get('videos');
+
+  let url = `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`;
+  if(single){
+    url = `${SUPABASE_URL}/rest/v1/videos?select=*&id=eq.${encodeURIComponent(single)}`;
+  }
+
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`
+    }
+  });
+
+  if(!res.ok){
+    throw new Error(`Supabase error: ${res.status}`);
+  }
+
+  let rows = await res.json();
+
+  if(single && rows.length){
+    const rest = await fetch(
+      `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc&id=neq.${encodeURIComponent(single)}`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if(rest.ok){
+      const others = await rest.json();
+      rows = rows.concat(others);
+    }
+  }
+
+  return rows;
+}
+
+let entries = [];
+
+function setupObserver(){
+  const observer = new IntersectionObserver((changes) => {
+    changes.forEach(change => {
+      const vid = change.target.querySelector('video:not(.bg-fill)');
+      const bgVid = change.target.querySelector('video.bg-fill');
+      if(!vid) return;
+      if(change.isIntersecting && change.intersectionRatio > 0.6){
+        entries.forEach(({el, vid: v}) => {
+          if(el !== change.target){
+            v.pause(); v.currentTime = 0;
+            const bg = el.querySelector('video.bg-fill');
+            if(bg){ bg.pause(); bg.currentTime = 0; }
+          }
+        });
+        vid.play().catch(()=>{});
+        if(bgVid) bgVid.play().catch(()=>{});
+      } else {
+        vid.pause();
+        if(bgVid) bgVid.pause();
+      }
+    });
+  }, { threshold: [0, 0.6, 1] });
+
+  document.querySelectorAll('.slide').forEach(s => observer.observe(s));
+}
+
+async function init(){
+  renderLoading();
+  try{
+    const videos = await fetchVideos();
+    if(!videos.length){
+      renderEmpty();
+      return;
+    }
+    feedEl.innerHTML = '';
+    entries = videos.map((v, i) => buildSlide(v, i));
+    entries.forEach(({el}) => feedEl.appendChild(el));
+    setupObserver();
+
+    // Ensure first video starts playing
+    requestAnimationFrame(() => {
+      const first = entries[0];
+      if(first){
+        first.vid.play().catch(()=>{});
+        const bg = first.el.querySelector('video.bg-fill');
+        if(bg) bg.play().catch(()=>{});
+      }
+    });
+  }catch(err){
+    console.error(err);
+    renderError('サーバーに接続できませんでした。');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
