@@ -2,8 +2,6 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<link rel="icon" href="icon.png" type="image/png">
-<link rel="apple-touch-icon" href="icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>アップロード · SeaTubes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -292,12 +290,9 @@
   </div>
 </div>
 
-<script src="./ffmpeg.js"></script>
-<script src="./util.js"></script>
-
-<script>
-const { FFmpeg } = FFmpegWASM;
-const { toBlobURL } = FFmpegUtil;
+<script type="module">
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+import { toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
 const CLOUD_NAME = "q9hmvoja";
 const UPLOAD_PRESET = "videos";
@@ -445,17 +440,16 @@ async function getFFmpeg(onLoadProgress){
   if(ffmpegInstance) return ffmpegInstance;
 
   const ffmpeg = new FFmpeg();
+  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
 
   if(onLoadProgress) onLoadProgress();
 
-  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+  const [coreURL, wasmURL] = await Promise.all([
+    toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+  ]);
 
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    classWorkerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript')
-  });
-
+  await ffmpeg.load({ coreURL, wasmURL });
   ffmpegInstance = ffmpeg;
   return ffmpeg;
 }
