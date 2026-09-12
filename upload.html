@@ -292,9 +292,12 @@
   </div>
 </div>
 
-<script type="module">
-import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
-import { toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
+<script src="./ffmpeg.js"></script>
+<script src="./util.js"></script>
+
+<script>
+const { FFmpeg } = FFmpegWASM;
+const { toBlobURL } = FFmpegUtil;
 
 const CLOUD_NAME = "q9hmvoja";
 const UPLOAD_PRESET = "videos";
@@ -442,25 +445,15 @@ async function getFFmpeg(onLoadProgress){
   if(ffmpegInstance) return ffmpegInstance;
 
   const ffmpeg = new FFmpeg();
-  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
-  const ffmpegURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm';
 
   if(onLoadProgress) onLoadProgress();
 
-  const [coreURL, wasmURL] = await Promise.all([
-    toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
-  ]);
-
-  // CDNのworker.jsを別ドメインからimportWorkerできるBlobコードに変換
-  const workerScript = `importScripts("${ffmpegURL}/worker.js");`;
-  const workerBlob = new Blob([workerScript], { type: 'text/javascript' });
-  const workerURL = URL.createObjectURL(workerBlob);
+  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
 
   await ffmpeg.load({
-    coreURL,
-    wasmURL,
-    workerURL
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    classWorkerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript')
   });
 
   ffmpegInstance = ffmpeg;
