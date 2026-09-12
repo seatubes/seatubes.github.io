@@ -443,6 +443,7 @@ async function getFFmpeg(onLoadProgress){
 
   const ffmpeg = new FFmpeg();
   const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
+  const ffmpegURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm';
 
   if(onLoadProgress) onLoadProgress();
 
@@ -451,7 +452,17 @@ async function getFFmpeg(onLoadProgress){
     toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
   ]);
 
-  await ffmpeg.load({ coreURL, wasmURL });
+  // CDNのworker.jsを別ドメインからimportWorkerできるBlobコードに変換
+  const workerScript = `importScripts("${ffmpegURL}/worker.js");`;
+  const workerBlob = new Blob([workerScript], { type: 'text/javascript' });
+  const workerURL = URL.createObjectURL(workerBlob);
+
+  await ffmpeg.load({
+    coreURL,
+    wasmURL,
+    workerURL
+  });
+
   ffmpegInstance = ffmpeg;
   return ffmpeg;
 }
