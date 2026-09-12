@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<link rel="icon" href="icon.png" type="image/png">
-<link rel="apple-touch-icon" href="icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>SeaTubes</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -53,6 +53,19 @@
     width:100%; height:100%;
     object-fit: contain;
     background: #000;
+  }
+
+  .video-slot{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background: #000;
+  }
+
+  .slide-placeholder{
+    width:44px; height:44px; border-radius:50%;
+    border: 2px solid rgba(89,230,199,0.15);
+    border-top-color: var(--bio-dim);
+    animation: spin 1s linear infinite;
   }
 
   .scrim{
@@ -115,7 +128,7 @@
     position:absolute; top:calc(env(safe-area-inset-top, 0px) + 20px); left:20px;
     display:flex; align-items:center; gap:8px;
   }
-  .brand .mark{ width:24px; height:24px; color: var(--bio); }
+  .brand .mark{ width:24px; height:24px; border-radius:6px; object-fit:cover; }
   .brand span{
     font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1rem;
     color: var(--foam);
@@ -196,10 +209,12 @@
 const SUPABASE_URL = "https://qyxjzgkkriyxdezdlfir.supabase.co";
 const SUPABASE_KEY = "sb_publishable_zB66kdVRi0F3SEGKXOhKHw_hMJ0eWj0";
 
+// 現在表示中のスライドの前後、いくつまで動画を実体化しておくか
+const PRELOAD_RADIUS = 1;
+
 const feedEl = document.getElementById('feed');
 
 const ICONS = {
-  logo: `<svg viewBox="0 0 24 24" fill="none" class="mark"><path d="M2 17c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2 12c2 2 4 2 6 0s4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/><path d="M9 3c1.5 2 1.5 4 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   heart: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7.5-4.6-10-9.3C.5 7.2 2.4 3.8 6 3.4c2.1-.2 3.9.9 6 3.1 2.1-2.2 3.9-3.3 6-3.1 3.6.4 5.5 3.8 4 7.3C19.5 15.4 12 20 12 20z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
   heartFilled: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7.5-4.6-10-9.3C.5 7.2 2.4 3.8 6 3.4c2.1-.2 3.9.9 6 3.1 2.1-2.2 3.9-3.3 6-3.1 3.6.4 5.5 3.8 4 7.3C19.5 15.4 12 20 12 20z"/></svg>`,
   share: `<svg viewBox="0 0 24 24" fill="none"><path d="M8.5 12.5 15.5 8M8.5 11.5 15.5 16M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
@@ -212,7 +227,7 @@ const ICONS = {
 };
 
 const brandHTML = `
-  <div class="brand">${ICONS.logo}<span>SeaTubes</span></div>
+  <div class="brand"><img class="mark" src="icon.png" alt="SeaTubes"><span>SeaTubes</span></div>
   <div class="top-actions">
     <a class="icon-fab" href="mypage.html">${ICONS.user}マイページ</a>
     <a class="icon-fab" href="upload.html">${ICONS.plus}投稿</a>
@@ -331,7 +346,10 @@ async function unlikeVideo(videoId){
 
 let isMuted = true;
 
-function buildSlide(video, likeData){
+// ----------------------------------------------
+// スライド構築（動画本体はまだ入れない）
+// ----------------------------------------------
+function buildSlideShell(video, likeData){
   const el = document.createElement('div');
   el.className = 'slide';
   el.dataset.id = video.id;
@@ -340,13 +358,7 @@ function buildSlide(video, likeData){
   const initialCount = likeData.counts[video.id] || 0;
 
   el.innerHTML = `
-    <video
-      src="${escapeHTML(video.video_url)}"
-      playsinline
-      loop
-      muted
-      preload="metadata"
-    ></video>
+    <div class="video-slot"><div class="slide-placeholder"></div></div>
     <div class="scrim-top"></div>
     <div class="scrim"></div>
     ${brandHTML}
@@ -369,32 +381,10 @@ function buildSlide(video, likeData){
     <div class="progress-ring"><i></i></div>
   `;
 
-  const vid = el.querySelector('video');
-  const muteBtn = el.querySelector('.mute-btn');
   const likeBtn = el.querySelector('.like-btn');
   const likeCountEl = el.querySelector('.like-count');
   const shareBtn = el.querySelector('.share-btn');
-  const playBadge = el.querySelector('.play-badge');
-  const progressFill = el.querySelector('.progress-ring i');
-
-  vid.muted = isMuted;
-
-  vid.addEventListener('timeupdate', () => {
-    if(vid.duration){
-      progressFill.style.width = (vid.currentTime / vid.duration * 100) + '%';
-    }
-  });
-
-  el.addEventListener('click', (e) => {
-    if(e.target.closest('.mute-btn') || e.target.closest('.rail-btn') || e.target.closest('.top-actions')) return;
-    if(vid.paused){
-      vid.play();
-      playBadge.classList.remove('show');
-    } else {
-      vid.pause();
-      playBadge.classList.add('show');
-    }
-  });
+  const muteBtn = el.querySelector('.mute-btn');
 
   muteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -446,7 +436,63 @@ function buildSlide(video, likeData){
     }
   });
 
-  return { el, vid, id: video.id };
+  return { el, id: video.id, videoUrl: video.video_url, title: video.title, vid: null };
+}
+
+// 動画実体（<video>）をスロットに挿入する
+function mountVideo(entry){
+  if(entry.vid) return; // すでにマウント済み
+
+  const slot = entry.el.querySelector('.video-slot');
+  const vid = document.createElement('video');
+  vid.src = entry.videoUrl;
+  vid.playsInline = true;
+  vid.loop = true;
+  vid.muted = isMuted;
+  vid.preload = 'metadata';
+
+  const progressFill = entry.el.querySelector('.progress-ring i');
+  vid.addEventListener('timeupdate', () => {
+    if(vid.duration){
+      progressFill.style.width = (vid.currentTime / vid.duration * 100) + '%';
+    }
+  });
+
+  const playBadge = entry.el.querySelector('.play-badge');
+  entry.el.addEventListener('click', entry._clickHandler = (e) => {
+    if(e.target.closest('.mute-btn') || e.target.closest('.rail-btn') || e.target.closest('.top-actions')) return;
+    if(vid.paused){
+      vid.play();
+      playBadge.classList.remove('show');
+    } else {
+      vid.pause();
+      playBadge.classList.add('show');
+    }
+  });
+
+  slot.innerHTML = '';
+  slot.appendChild(vid);
+  entry.vid = vid;
+}
+
+// 動画実体を破棄してメモリを解放する
+function unmountVideo(entry){
+  if(!entry.vid) return;
+
+  entry.vid.pause();
+  entry.vid.removeAttribute('src');
+  entry.vid.load(); // バッファを確実に解放させる
+  if(entry._clickHandler){
+    entry.el.removeEventListener('click', entry._clickHandler);
+    entry._clickHandler = null;
+  }
+
+  const slot = entry.el.querySelector('.video-slot');
+  slot.innerHTML = '<div class="slide-placeholder"></div>';
+  entry.vid = null;
+
+  const progressFill = entry.el.querySelector('.progress-ring i');
+  if(progressFill) progressFill.style.width = '0%';
 }
 
 async function fetchVideos(){
@@ -478,6 +524,7 @@ async function fetchVideos(){
 }
 
 let entries = [];
+let currentIndex = 0;
 let currentVideoId = null;
 
 function syncUrl(videoId){
@@ -488,24 +535,47 @@ function syncUrl(videoId){
   history.replaceState(null, '', url);
 }
 
+// 現在位置の前後 PRELOAD_RADIUS 件だけ動画を実体化し、それ以外は破棄する
+function updateActiveWindow(activeIndex){
+  currentIndex = activeIndex;
+  entries.forEach((entry, i) => {
+    const withinWindow = Math.abs(i - activeIndex) <= PRELOAD_RADIUS;
+    if(withinWindow){
+      mountVideo(entry);
+    } else {
+      unmountVideo(entry);
+    }
+  });
+
+  const active = entries[activeIndex];
+  if(active && active.vid){
+    entries.forEach((entry, i) => {
+      if(i !== activeIndex && entry.vid){
+        entry.vid.pause();
+        entry.vid.currentTime = 0;
+      }
+    });
+    active.vid.play().catch(()=>{});
+    syncUrl(active.id);
+  }
+}
+
 function setupObserver(){
   const observer = new IntersectionObserver((changes) => {
     changes.forEach(change => {
-      const vid = change.target.querySelector('video');
-      if(!vid) return;
       if(change.isIntersecting && change.intersectionRatio > 0.6){
-        entries.forEach(({el, vid: v}) => {
-          if(el !== change.target){ v.pause(); v.currentTime = 0; }
-        });
-        vid.play().catch(()=>{});
-        syncUrl(change.target.dataset.id);
+        const idx = entries.findIndex(entry => entry.el === change.target);
+        if(idx !== -1) updateActiveWindow(idx);
       } else {
-        vid.pause();
+        const idx = entries.findIndex(entry => entry.el === change.target);
+        if(idx !== -1 && entries[idx].vid){
+          entries[idx].vid.pause();
+        }
       }
     });
   }, { threshold: [0, 0.6, 1] });
 
-  document.querySelectorAll('.slide').forEach(s => observer.observe(s));
+  entries.forEach(entry => observer.observe(entry.el));
 }
 
 async function init(){
@@ -520,16 +590,12 @@ async function init(){
     const likeData = await fetchLikeData(videos.map(v => v.id));
 
     feedEl.innerHTML = '';
-    entries = videos.map(v => buildSlide(v, likeData));
-    entries.forEach(({el}) => feedEl.appendChild(el));
+    entries = videos.map(v => buildSlideShell(v, likeData));
+    entries.forEach(entry => feedEl.appendChild(entry.el));
     setupObserver();
 
     requestAnimationFrame(() => {
-      const first = entries[0];
-      if(first){
-        first.vid.play().catch(()=>{});
-        syncUrl(first.id);
-      }
+      updateActiveWindow(0);
     });
   }catch(err){
     console.error(err);
