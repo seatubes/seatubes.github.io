@@ -8,12 +8,11 @@
 <title>SeaTubes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --deep-void: #03070c;
     --deep-panel: #0a141f;
-    --deep-panel-2: #0e1c2b;
     --line: rgba(120,160,175,0.16);
     --foam: #d7f3ee;
     --foam-dim: #8aa5ae;
@@ -28,18 +27,10 @@
     font-family: 'Inter', sans-serif;
     overscroll-behavior: none;
   }
-  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
-
-  /* subtle caustic light drifting in the void */
-  .void-glow{
-    position: fixed; inset:0; z-index:0; pointer-events:none;
-    background:
-      radial-gradient(60% 40% at 15% 8%, rgba(89,230,199,0.10), transparent 60%),
-      radial-gradient(50% 35% at 90% 85%, rgba(89,230,199,0.06), transparent 60%);
-  }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; }
 
   #feed{
-    position: relative; z-index:1;
+    position: relative;
     height: 100dvh; width: 100%;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
@@ -58,143 +49,119 @@
   }
 
   .slide video{
-    position:absolute; top:50%; left:50%;
-    transform: translate(-50%, -50%);
+    position:absolute; inset:0;
     width:100%; height:100%;
     object-fit: contain;
     background: #000;
   }
 
-  /* Blurred fill behind the video so letterboxed edges never look empty */
-  .slide .bg-fill{
-    position:absolute; inset:-5%;
-    width:110%; height:110%;
-    object-fit: cover;
-    filter: blur(38px) brightness(0.45) saturate(1.2);
-    transform: scale(1.1);
-  }
-
   .scrim{
     position:absolute; left:0; right:0; bottom:0;
-    height:46%;
-    background: linear-gradient(to top, rgba(2,6,10,0.92) 0%, rgba(2,6,10,0.55) 45%, transparent 100%);
+    height:40%;
+    background: linear-gradient(to top, rgba(2,6,10,0.9) 0%, transparent 100%);
     pointer-events:none;
   }
   .scrim-top{
     position:absolute; left:0; right:0; top:0;
-    height:110px;
-    background: linear-gradient(to bottom, rgba(2,6,10,0.75), transparent);
+    height:90px;
+    background: linear-gradient(to bottom, rgba(2,6,10,0.65), transparent);
     pointer-events:none;
   }
 
   .meta{
     position:absolute; left:20px; right:88px; bottom:34px;
-    z-index:2;
   }
   .meta .title{
-    font-size: 1.15rem; font-weight:600; color:var(--foam);
+    font-size: 1.1rem; font-weight:600; color:var(--foam);
     line-height:1.35; margin:0 0 6px;
-    text-shadow: 0 1px 12px rgba(0,0,0,0.5);
   }
   .meta .desc{
-    font-size: 0.9rem; color: var(--foam-dim); line-height:1.5;
+    font-size: 0.88rem; color: var(--foam-dim); line-height:1.5;
     margin:0; max-width: 34ch;
-    text-shadow: 0 1px 10px rgba(0,0,0,0.5);
   }
   .meta .tag{
     display:inline-flex; align-items:center; gap:6px;
-    font-size:0.72rem; color:var(--bio);
+    font-size:0.7rem; color:var(--bio);
     letter-spacing:0.02em; margin-bottom:10px;
   }
-  .tag .dot{ width:6px; height:6px; border-radius:50%; background:var(--bio); box-shadow:0 0 8px var(--bio); }
+  .tag .dot{ width:6px; height:6px; border-radius:50%; background:var(--bio); }
 
   .side-rail{
-    position:absolute; right:14px; bottom:40px; z-index:3;
-    display:flex; flex-direction:column; align-items:center; gap:22px;
+    position:absolute; right:14px; bottom:40px;
+    display:flex; flex-direction:column; align-items:center; gap:18px;
   }
+  .rail-item{ display:flex; flex-direction:column; align-items:center; gap:4px; }
   .rail-btn{
-    width:46px; height:46px; border-radius:50%;
-    background: rgba(10,20,31,0.55);
+    width:44px; height:44px; border-radius:50%;
+    background: rgba(10,20,31,0.6);
     border: 1px solid var(--line);
-    backdrop-filter: blur(6px);
     display:flex; align-items:center; justify-content:center;
     color: var(--foam);
-    transition: transform .15s ease, background .15s ease, border-color .15s ease;
   }
-  .rail-btn:active{ transform: scale(0.9); }
+  .rail-btn:active{ transform: scale(0.92); }
   .rail-btn.liked{ color: var(--coral); border-color: rgba(255,122,99,0.5); }
-  .rail-btn svg{ width:22px; height:22px; }
+  .rail-btn svg{ width:21px; height:21px; }
+  .rail-count{ font-size:0.68rem; color:var(--foam-dim); }
 
   .mute-btn{
-    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:16px; z-index:3;
-    width:40px; height:40px; border-radius:50%;
-    background: rgba(10,20,31,0.55); border:1px solid var(--line);
-    backdrop-filter: blur(6px);
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:16px;
+    width:38px; height:38px; border-radius:50%;
+    background: rgba(10,20,31,0.6); border:1px solid var(--line);
     display:flex; align-items:center; justify-content:center; color:var(--foam);
   }
-  .mute-btn svg{ width:18px; height:18px; }
+  .mute-btn svg{ width:17px; height:17px; }
 
   .brand{
-    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 20px); left:20px; z-index:3;
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 20px); left:20px;
     display:flex; align-items:center; gap:8px;
   }
-  .brand .mark{
-    width:26px; height:26px; color: var(--bio);
-  }
+  .brand .mark{ width:24px; height:24px; color: var(--bio); }
   .brand span{
-    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.02rem;
-    letter-spacing: -0.01em; color: var(--foam);
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1rem;
+    color: var(--foam);
   }
 
-  .upload-fab{
-    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:66px; z-index:3;
+  .top-actions{
+    position:absolute; top:calc(env(safe-area-inset-top, 0px) + 18px); right:62px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .icon-fab{
     display:flex; align-items:center; gap:6px;
-    height:38px; padding: 0 15px 0 12px;
+    height:36px; padding: 0 13px 0 11px;
     border-radius:999px;
-    background: rgba(10,20,31,0.55);
+    background: rgba(10,20,31,0.6);
     border:1px solid var(--line);
-    backdrop-filter: blur(6px);
     color: var(--foam);
     text-decoration:none;
-    font-family:'Space Grotesk', sans-serif; font-size:0.82rem; font-weight:600;
-    transition: border-color .15s ease, background .15s ease, transform .1s ease;
+    font-family:'Space Grotesk', sans-serif; font-size:0.8rem; font-weight:600;
   }
-  .upload-fab:active{ transform: scale(0.95); }
-  .upload-fab svg{ width:16px; height:16px; color: var(--bio); }
+  .icon-fab svg{ width:15px; height:15px; color: var(--bio); }
 
   .progress-ring{
-    position:absolute; bottom:0; left:0; right:0; height:2px; z-index:3;
+    position:absolute; bottom:0; left:0; right:0; height:2px;
     background: rgba(255,255,255,0.08);
   }
   .progress-ring i{
     display:block; height:100%; width:0%;
     background: var(--bio);
-    box-shadow: 0 0 6px var(--bio);
   }
 
-  /* Empty / loading / error states */
   .center-state{
-    position:relative; z-index:2; text-align:center; padding: 0 32px;
+    position:relative; text-align:center; padding: 0 32px;
     max-width: 420px;
   }
-  .center-state .glyph{
-    width:52px; height:52px; margin: 0 auto 18px; color: var(--bio-dim);
-  }
-  .center-state h2{
-    font-size:1.3rem; font-weight:600; margin: 0 0 10px; color:var(--foam);
-  }
-  .center-state p{
-    font-size:0.92rem; color:var(--foam-dim); line-height:1.6; margin:0 0 22px;
-  }
+  .center-state .glyph{ width:48px; height:48px; margin: 0 auto 18px; color: var(--bio-dim); }
+  .center-state h2{ font-size:1.25rem; font-weight:600; margin: 0 0 10px; color:var(--foam); }
+  .center-state p{ font-size:0.9rem; color:var(--foam-dim); line-height:1.6; margin:0 0 22px; }
   .cta-link{
     display:inline-flex; align-items:center; gap:8px;
     padding: 11px 22px; border-radius: 999px;
-    background: var(--bio); color: #02201a; font-weight:600; font-size:0.88rem;
+    background: var(--bio); color: #02201a; font-weight:600; font-size:0.86rem;
     text-decoration:none; font-family:'Space Grotesk', sans-serif;
   }
 
   .spinner{
-    width:28px; height:28px; border-radius:50%;
+    width:26px; height:26px; border-radius:50%;
     border: 2px solid rgba(89,230,199,0.2);
     border-top-color: var(--bio);
     animation: spin 0.9s linear infinite;
@@ -203,37 +170,26 @@
   @keyframes spin{ to{ transform: rotate(360deg); } }
 
   .play-badge{
-    position:absolute; z-index:2; width:64px; height:64px; border-radius:50%;
-    background: rgba(3,7,12,0.55); border:1px solid var(--line);
+    position:absolute; width:60px; height:60px; border-radius:50%;
+    background: rgba(3,7,12,0.5); border:1px solid var(--line);
     display:flex; align-items:center; justify-content:center; color:var(--foam);
-    opacity:0; transition: opacity .15s ease;
+    opacity:0;
   }
-  .play-badge svg{ width:26px; height:26px; margin-left:3px; }
+  .play-badge svg{ width:24px; height:24px; margin-left:3px; }
   .play-badge.show{ opacity:1; }
 
   @media (min-width: 640px){
-    html, body{ background: var(--deep-void); }
-    body{
-      display:flex; align-items:center; justify-content:center;
-      min-height: 100vh;
-    }
+    body{ display:flex; align-items:center; justify-content:center; min-height: 100vh; }
     #feed{
-      max-width: 430px;
-      height: 92vh;
-      max-height: 900px;
-      margin: 0;
-      border-radius: 28px;
-      border: 1px solid var(--line);
-      box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(89,230,199,0.04);
+      max-width: 430px; height: 92vh; max-height: 900px; margin: 0;
+      border-radius: 24px; border: 1px solid var(--line);
     }
-    .slide{ height: 100%; border-radius: 28px; }
-    .slide:first-child{ border-radius: 28px 28px 0 0; }
+    .slide{ height: 100%; }
   }
 </style>
 </head>
 <body>
 
-<div class="void-glow"></div>
 <div id="feed"></div>
 
 <script>
@@ -252,12 +208,37 @@ const ICONS = {
   wave: `<svg viewBox="0 0 24 24" fill="none" class="glyph"><path d="M2 8c2.5 2.5 5 2.5 7.5 0S14.5 5.5 17 8s5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2 14c2.5 2.5 5 2.5 7.5 0s5-2.5 7.5 0 5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2 20c2.5 2.5 5 2.5 7.5 0s5-2.5 7.5 0 5 2.5 5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.5"/></svg>`,
   play: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  user: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 };
 
 const brandHTML = `
   <div class="brand">${ICONS.logo}<span>SeaTubes</span></div>
-  <a class="upload-fab" href="upload.html">${ICONS.plus}投稿</a>
+  <div class="top-actions">
+    <a class="icon-fab" href="mypage.html">${ICONS.user}マイページ</a>
+    <a class="icon-fab" href="upload.html">${ICONS.plus}投稿</a>
+  </div>
 `;
+
+// ----------------------------------------------
+// 匿名ユーザーID（Cookie）
+// ----------------------------------------------
+function getCookie(name){
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+function setCookie(name, value, days){
+  const maxAge = days * 24 * 60 * 60;
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=/; SameSite=Lax`;
+}
+function getOrCreateUserId(){
+  let uid = getCookie('st_uid');
+  if(!uid){
+    uid = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    setCookie('st_uid', uid, 365);
+  }
+  return uid;
+}
+const USER_ID = getOrCreateUserId();
 
 function renderCenterState(glyph, title, desc, ctaHTML){
   feedEl.innerHTML = `
@@ -273,27 +254,18 @@ function renderCenterState(glyph, title, desc, ctaHTML){
 }
 
 function renderLoading(){
-  renderCenterState(
-    `<div class="spinner"></div>`,
-    '潜っています…',
-    '動画を読み込み中です。少しお待ちください。'
-  );
+  renderCenterState(`<div class="spinner"></div>`, '潜っています…', '動画を読み込み中です。少しお待ちください。');
 }
-
 function renderEmpty(){
   renderCenterState(
-    ICONS.wave,
-    'まだ動画がありません',
+    ICONS.wave, 'まだ動画がありません',
     '最初の一本を投稿して、SeaTubesの海を満たしましょう。',
     `<a class="cta-link" href="upload.html">${ICONS.play}動画をアップロード</a>`
   );
 }
-
 function renderError(msg){
   renderCenterState(
-    ICONS.wave,
-    '読み込みに失敗しました',
-    msg || '通信状態を確認して、もう一度お試しください。',
+    ICONS.wave, '読み込みに失敗しました', msg || '通信状態を確認して、もう一度お試しください。',
     `<a class="cta-link" href="javascript:location.reload()">再読み込み</a>`
   );
 }
@@ -304,24 +276,70 @@ function escapeHTML(str){
   return div.innerHTML;
 }
 
+// ----------------------------------------------
+// いいねAPI
+// ----------------------------------------------
+async function fetchLikeData(videoIds){
+  if(!videoIds.length) return { counts: {}, likedSet: new Set() };
+  const idList = videoIds.join(',');
+
+  const [countsRes, mineRes] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/likes?select=video_id&video_id=in.(${idList})`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    }),
+    fetch(`${SUPABASE_URL}/rest/v1/likes?select=video_id&user_id=eq.${encodeURIComponent(USER_ID)}&video_id=in.(${idList})`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    })
+  ]);
+
+  const counts = {};
+  if(countsRes.ok){
+    const rows = await countsRes.json();
+    rows.forEach(r => { counts[r.video_id] = (counts[r.video_id] || 0) + 1; });
+  }
+
+  const likedSet = new Set();
+  if(mineRes.ok){
+    const rows = await mineRes.json();
+    rows.forEach(r => likedSet.add(r.video_id));
+  }
+
+  return { counts, likedSet };
+}
+
+async function likeVideo(videoId){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/likes`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify({ video_id: videoId, user_id: USER_ID })
+  });
+  return res.ok;
+}
+
+async function unlikeVideo(videoId){
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/likes?video_id=eq.${videoId}&user_id=eq.${encodeURIComponent(USER_ID)}`,
+    { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  );
+  return res.ok;
+}
+
 let isMuted = true;
 
-function buildSlide(video, index){
+function buildSlide(video, likeData){
   const el = document.createElement('div');
   el.className = 'slide';
-  el.dataset.index = index;
+  el.dataset.id = video.id;
+
+  const initiallyLiked = likeData.likedSet.has(video.id);
+  const initialCount = likeData.counts[video.id] || 0;
 
   el.innerHTML = `
-    <video
-      class="bg-fill"
-      src="${escapeHTML(video.video_url)}"
-      playsinline
-      loop
-      muted
-      preload="metadata"
-      aria-hidden="true"
-      tabindex="-1"
-    ></video>
     <video
       src="${escapeHTML(video.video_url)}"
       playsinline
@@ -340,16 +358,21 @@ function buildSlide(video, index){
       ${video.description ? `<p class="desc">${escapeHTML(video.description)}</p>` : ''}
     </div>
     <div class="side-rail">
-      <button class="rail-btn like-btn" aria-label="いいね">${ICONS.heart}</button>
-      <button class="rail-btn share-btn" aria-label="共有">${ICONS.share}</button>
+      <div class="rail-item">
+        <button class="rail-btn like-btn${initiallyLiked ? ' liked' : ''}" aria-label="いいね">${initiallyLiked ? ICONS.heartFilled : ICONS.heart}</button>
+        <span class="rail-count like-count">${initialCount}</span>
+      </div>
+      <div class="rail-item">
+        <button class="rail-btn share-btn" aria-label="共有">${ICONS.share}</button>
+      </div>
     </div>
     <div class="progress-ring"><i></i></div>
   `;
 
-  const vid = el.querySelector('video:not(.bg-fill)');
-  const bgVid = el.querySelector('video.bg-fill');
+  const vid = el.querySelector('video');
   const muteBtn = el.querySelector('.mute-btn');
   const likeBtn = el.querySelector('.like-btn');
+  const likeCountEl = el.querySelector('.like-count');
   const shareBtn = el.querySelector('.share-btn');
   const playBadge = el.querySelector('.play-badge');
   const progressFill = el.querySelector('.progress-ring i');
@@ -360,21 +383,15 @@ function buildSlide(video, index){
     if(vid.duration){
       progressFill.style.width = (vid.currentTime / vid.duration * 100) + '%';
     }
-    // keep background copy loosely in sync without fighting the main clock
-    if(bgVid.paused === vid.paused === false && Math.abs(bgVid.currentTime - vid.currentTime) > 0.35){
-      bgVid.currentTime = vid.currentTime;
-    }
   });
 
   el.addEventListener('click', (e) => {
-    if(e.target.closest('.mute-btn') || e.target.closest('.rail-btn')) return;
+    if(e.target.closest('.mute-btn') || e.target.closest('.rail-btn') || e.target.closest('.top-actions')) return;
     if(vid.paused){
       vid.play();
-      bgVid.play();
       playBadge.classList.remove('show');
     } else {
       vid.pause();
-      bgVid.pause();
       playBadge.classList.add('show');
     }
   });
@@ -382,18 +399,36 @@ function buildSlide(video, index){
   muteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     isMuted = !isMuted;
-    document.querySelectorAll('#feed video:not(.bg-fill)').forEach(v => v.muted = isMuted);
+    document.querySelectorAll('#feed video').forEach(v => v.muted = isMuted);
     document.querySelectorAll('.mute-btn').forEach(b => {
       b.innerHTML = isMuted ? ICONS.volumeOff : ICONS.volumeOn;
     });
   });
 
-  let liked = false;
-  likeBtn.addEventListener('click', (e) => {
+  let liked = initiallyLiked;
+  let count = initialCount;
+  let pending = false;
+  likeBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    liked = !liked;
+    if(pending) return;
+    pending = true;
+
+    const nextLiked = !liked;
+    liked = nextLiked;
+    count += nextLiked ? 1 : -1;
     likeBtn.classList.toggle('liked', liked);
     likeBtn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
+    likeCountEl.textContent = count;
+
+    const ok = nextLiked ? await likeVideo(video.id) : await unlikeVideo(video.id);
+    if(!ok){
+      liked = !nextLiked;
+      count += nextLiked ? -1 : 1;
+      likeBtn.classList.toggle('liked', liked);
+      likeBtn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
+      likeCountEl.textContent = count;
+    }
+    pending = false;
   });
 
   shareBtn.addEventListener('click', async (e) => {
@@ -411,66 +446,61 @@ function buildSlide(video, index){
     }
   });
 
-  return { el, vid };
+  return { el, vid, id: video.id };
 }
 
 async function fetchVideos(){
   const params = new URLSearchParams(location.search);
   const single = params.get('videos');
 
-  let url = `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`;
+  let rows;
   if(single){
-    url = `${SUPABASE_URL}/rest/v1/videos?select=*&id=eq.${encodeURIComponent(single)}`;
-  }
-
-  const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`
-    }
-  });
-
-  if(!res.ok){
-    throw new Error(`Supabase error: ${res.status}`);
-  }
-
-  let rows = await res.json();
-
-  if(single && rows.length){
-    const rest = await fetch(
-      `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc&id=neq.${encodeURIComponent(single)}`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    const firstRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/videos?select=*&id=eq.${encodeURIComponent(single)}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
-    if(rest.ok){
-      const others = await rest.json();
-      rows = rows.concat(others);
-    }
-  }
+    const firstRows = firstRes.ok ? await firstRes.json() : [];
 
+    const restRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc&id=neq.${encodeURIComponent(single)}`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    const restRows = restRes.ok ? await restRes.json() : [];
+    rows = firstRows.concat(restRows);
+  } else {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/videos?select=*&order=created_at.desc`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if(!res.ok) throw new Error(`Supabase error: ${res.status}`);
+    rows = await res.json();
+  }
   return rows;
 }
 
 let entries = [];
+let currentVideoId = null;
+
+function syncUrl(videoId){
+  if(videoId === currentVideoId) return;
+  currentVideoId = videoId;
+  const url = new URL(location.href);
+  url.searchParams.set('videos', videoId);
+  history.replaceState(null, '', url);
+}
 
 function setupObserver(){
   const observer = new IntersectionObserver((changes) => {
     changes.forEach(change => {
-      const vid = change.target.querySelector('video:not(.bg-fill)');
-      const bgVid = change.target.querySelector('video.bg-fill');
+      const vid = change.target.querySelector('video');
       if(!vid) return;
       if(change.isIntersecting && change.intersectionRatio > 0.6){
         entries.forEach(({el, vid: v}) => {
-          if(el !== change.target){
-            v.pause(); v.currentTime = 0;
-            const bg = el.querySelector('video.bg-fill');
-            if(bg){ bg.pause(); bg.currentTime = 0; }
-          }
+          if(el !== change.target){ v.pause(); v.currentTime = 0; }
         });
         vid.play().catch(()=>{});
-        if(bgVid) bgVid.play().catch(()=>{});
+        syncUrl(change.target.dataset.id);
       } else {
         vid.pause();
-        if(bgVid) bgVid.pause();
       }
     });
   }, { threshold: [0, 0.6, 1] });
@@ -486,18 +516,19 @@ async function init(){
       renderEmpty();
       return;
     }
+
+    const likeData = await fetchLikeData(videos.map(v => v.id));
+
     feedEl.innerHTML = '';
-    entries = videos.map((v, i) => buildSlide(v, i));
+    entries = videos.map(v => buildSlide(v, likeData));
     entries.forEach(({el}) => feedEl.appendChild(el));
     setupObserver();
 
-    // Ensure first video starts playing
     requestAnimationFrame(() => {
       const first = entries[0];
       if(first){
         first.vid.play().catch(()=>{});
-        const bg = first.el.querySelector('video.bg-fill');
-        if(bg) bg.play().catch(()=>{});
+        syncUrl(first.id);
       }
     });
   }catch(err){

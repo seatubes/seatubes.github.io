@@ -2,6 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<title>削除依頼 - 40ちゃんねる</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>アップロード · SeaTubes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -126,6 +129,15 @@
   .duration-warn.show{ display:flex; }
   .duration-warn svg{ width:15px; height:15px; flex-shrink:0; }
 
+  .resize-note{
+    display:none; align-items:center; gap:8px;
+    font-size:0.78rem; color: var(--bio);
+    background: rgba(89,230,199,0.08); border:1px solid rgba(89,230,199,0.25);
+    padding:9px 12px; border-radius:10px; margin-top:10px;
+  }
+  .resize-note.show{ display:flex; }
+  .resize-note svg{ width:15px; height:15px; flex-shrink:0; }
+
   .submit-btn{
     margin-top:6px;
     width:100%; border:none; border-radius:999px;
@@ -230,6 +242,11 @@
         </div>
       </div>
 
+      <div class="resize-note" id="resizeNote">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 3H5a2 2 0 0 0-2 2v4m0 6v4a2 2 0 0 0 2 2h4m6 0h4a2 2 0 0 0 2-2v-4m0-6V5a2 2 0 0 0-2-2h-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="resizeNoteText"></span>
+      </div>
+
       <div class="duration-warn" id="durationWarn">
         <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>この動画は1分を超えています。ショート動画としての投稿を想定しています。</span>
@@ -276,11 +293,38 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+import { toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
+
 const CLOUD_NAME = "q9hmvoja";
 const UPLOAD_PRESET = "videos";
 const SUPABASE_URL = "https://qyxjzgkkriyxdezdlfir.supabase.co";
 const SUPABASE_KEY = "sb_publishable_zB66kdVRi0F3SEGKXOhKHw_hMJ0eWj0";
+
+const MAX_WIDTH = 1920;
+const MAX_HEIGHT = 1080;
+
+// ----------------------------------------------
+// 匿名ユーザーID（Cookie） - index.html / mypage.html と同じ仕組み
+// ----------------------------------------------
+function getCookie(name){
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+function setCookie(name, value, days){
+  const maxAge = days * 24 * 60 * 60;
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=/; SameSite=Lax`;
+}
+function getOrCreateUserId(){
+  let uid = getCookie('st_uid');
+  if(!uid){
+    uid = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    setCookie('st_uid', uid, 365);
+  }
+  return uid;
+}
+const USER_ID = getOrCreateUserId();
 
 const form = document.getElementById('uploadForm');
 const dropzone = document.getElementById('dropzone');
@@ -290,6 +334,8 @@ const previewVideo = document.getElementById('previewVideo');
 const fileMetaText = document.getElementById('fileMetaText');
 const removeBtn = document.getElementById('removeBtn');
 const durationWarn = document.getElementById('durationWarn');
+const resizeNote = document.getElementById('resizeNote');
+const resizeNoteText = document.getElementById('resizeNoteText');
 const titleInput = document.getElementById('titleInput');
 const descInput = document.getElementById('descInput');
 const descCount = document.getElementById('descCount');
@@ -304,6 +350,8 @@ const successView = document.getElementById('successView');
 const uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
 
 let selectedFile = null;
+let selectedVideoWidth = null;
+let selectedVideoHeight = null;
 
 function formatBytes(bytes){
   if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
@@ -316,12 +364,15 @@ function handleFile(file){
     return;
   }
   selectedFile = file;
+  selectedVideoWidth = null;
+  selectedVideoHeight = null;
   const url = URL.createObjectURL(file);
   previewVideo.src = url;
   preview.classList.add('show');
   dropzone.style.display = 'none';
   fileMetaText.textContent = `${file.name} · ${formatBytes(file.size)}`;
   hideError();
+  resizeNote.classList.remove('show');
 
   previewVideo.addEventListener('loadedmetadata', function onMeta(){
     previewVideo.removeEventListener('loadedmetadata', onMeta);
@@ -329,6 +380,17 @@ function handleFile(file){
       durationWarn.classList.add('show');
     } else {
       durationWarn.classList.remove('show');
+    }
+
+    selectedVideoWidth = previewVideo.videoWidth;
+    selectedVideoHeight = previewVideo.videoHeight;
+
+    if(selectedVideoWidth > MAX_WIDTH || selectedVideoHeight > MAX_HEIGHT){
+      resizeNoteText.textContent = `${selectedVideoWidth}×${selectedVideoHeight} の動画はフルHD(1920×1080)に自動リサイズしてから投稿します。`;
+      resizeNote.classList.add('show');
+    } else {
+      resizeNoteText.textContent = '投稿時に自動で圧縮を行い、データ量を抑えてからアップロードします。';
+      resizeNote.classList.add('show');
     }
   });
 }
@@ -350,10 +412,13 @@ dropzone.addEventListener('drop', (e) => {
 
 removeBtn.addEventListener('click', () => {
   selectedFile = null;
+  selectedVideoWidth = null;
+  selectedVideoHeight = null;
   fileInput.value = '';
   previewVideo.src = '';
   preview.classList.remove('show');
   durationWarn.classList.remove('show');
+  resizeNote.classList.remove('show');
   dropzone.style.display = 'block';
 });
 
@@ -367,6 +432,84 @@ function showError(msg){
 }
 function hideError(){
   errorMsg.classList.remove('show');
+}
+
+// ----------------------------------------------
+// 動画の圧縮・リサイズ（ffmpeg.wasm シングルスレッド版・ブラウザ内処理）
+// ----------------------------------------------
+let ffmpegInstance = null;
+
+async function getFFmpeg(onLoadProgress){
+  if(ffmpegInstance) return ffmpegInstance;
+
+  const ffmpeg = new FFmpeg();
+  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
+
+  if(onLoadProgress) onLoadProgress();
+
+  const [coreURL, wasmURL] = await Promise.all([
+    toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+  ]);
+
+  await ffmpeg.load({ coreURL, wasmURL });
+  ffmpegInstance = ffmpeg;
+  return ffmpeg;
+}
+
+// 幅・高さがフルHDを超えていたら、アスペクト比を保ったまま1920x1080に収まるようスケールする
+function computeTargetSize(width, height){
+  if(width <= MAX_WIDTH && height <= MAX_HEIGHT){
+    return null; // リサイズ不要
+  }
+  const widthScale = MAX_WIDTH / width;
+  const heightScale = MAX_HEIGHT / height;
+  const scale = Math.min(widthScale, heightScale);
+
+  // H.264は偶数ピクセルである必要があるため2の倍数に丸める
+  let targetWidth = Math.round(width * scale / 2) * 2;
+  let targetHeight = Math.round(height * scale / 2) * 2;
+  return { width: targetWidth, height: targetHeight };
+}
+
+async function processVideo(file, width, height, onProgress){
+  const targetSize = computeTargetSize(width, height);
+
+  onProgress({ stage: 'ffmpeg-load', pct: 0 });
+  const ffmpeg = await getFFmpeg();
+
+  const inputName = 'input' + (file.name.match(/\.[a-zA-Z0-9]+$/)?.[0] || '.mp4');
+  const outputName = 'output.mp4';
+
+  ffmpeg.on('progress', ({ progress }) => {
+    const pct = Math.min(100, Math.max(0, Math.round(progress * 100)));
+    onProgress({ stage: 'processing', pct });
+  });
+
+  const fileData = new Uint8Array(await file.arrayBuffer());
+  await ffmpeg.writeFile(inputName, fileData);
+
+  const args = ['-i', inputName];
+  if(targetSize){
+    args.push('-vf', `scale=${targetSize.width}:${targetSize.height}`);
+  }
+  args.push(
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-crf', '26',
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    '-movflags', '+faststart',
+    outputName
+  );
+
+  await ffmpeg.exec(args);
+
+  const data = await ffmpeg.readFile(outputName);
+  await ffmpeg.deleteFile(inputName);
+  await ffmpeg.deleteFile(outputName);
+
+  return new File([data.buffer], file.name.replace(/\.[a-zA-Z0-9]+$/, '') + '.mp4', { type: 'video/mp4' });
 }
 
 function uploadToCloudinary(file, onProgress){
@@ -416,7 +559,7 @@ async function saveToSupabase({ title, description, video_url }){
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },
-    body: JSON.stringify({ title, description, video_url })
+    body: JSON.stringify({ title, description, video_url, uploader_id: USER_ID })
   });
   if(!res.ok){
     const text = await res.text();
@@ -428,7 +571,7 @@ async function saveToSupabase({ title, description, video_url }){
 function setSubmitting(isSubmitting){
   submitBtn.disabled = isSubmitting;
   if(isSubmitting){
-    submitBtn.innerHTML = '流しています…';
+    submitBtn.innerHTML = '処理しています…';
     progressWrap.classList.add('show');
   } else {
     submitBtn.innerHTML = `
@@ -454,10 +597,38 @@ form.addEventListener('submit', async (e) => {
   setSubmitting(true);
   progressFill.style.width = '0%';
   progressPct.textContent = '0%';
-  progressStage.textContent = 'Cloudinaryへアップロード中…';
+  progressStage.textContent = '動画を準備中…';
 
   try{
-    const cloudRes = await uploadToCloudinary(selectedFile, (pct) => {
+    let fileToUpload = selectedFile;
+
+    try{
+      fileToUpload = await processVideo(
+        selectedFile,
+        selectedVideoWidth,
+        selectedVideoHeight,
+        ({ stage, pct }) => {
+          if(stage === 'ffmpeg-load'){
+            progressStage.textContent = '動画エンジンを準備中…';
+            progressFill.style.width = '0%';
+            progressPct.textContent = '0%';
+          } else if(stage === 'processing'){
+            progressStage.textContent = '動画を圧縮・最適化中…';
+            progressFill.style.width = pct + '%';
+            progressPct.textContent = pct + '%';
+          }
+        }
+      );
+    }catch(processErr){
+      console.error('動画処理でエラーが発生しました。元のファイルのままアップロードします。', processErr);
+      fileToUpload = selectedFile;
+    }
+
+    progressStage.textContent = 'Cloudinaryへアップロード中…';
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+
+    const cloudRes = await uploadToCloudinary(fileToUpload, (pct) => {
       progressFill.style.width = pct + '%';
       progressPct.textContent = pct + '%';
     });
@@ -484,9 +655,12 @@ form.addEventListener('submit', async (e) => {
 uploadAnotherBtn.addEventListener('click', () => {
   form.reset();
   selectedFile = null;
+  selectedVideoWidth = null;
+  selectedVideoHeight = null;
   previewVideo.src = '';
   preview.classList.remove('show');
   durationWarn.classList.remove('show');
+  resizeNote.classList.remove('show');
   dropzone.style.display = 'block';
   descCount.textContent = '0';
   progressWrap.classList.remove('show');
