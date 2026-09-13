@@ -137,6 +137,19 @@
   .resize-note.show{ display:flex; }
   .resize-note svg{ width:15px; height:15px; flex-shrink:0; }
 
+  .terms-check{
+    display:flex; align-items:center; gap:9px;
+    font-size:0.85rem; color: var(--foam-dim);
+    cursor:pointer; user-select:none;
+    margin-top:2px;
+  }
+  .terms-check input[type=checkbox]{
+    width:18px; height:18px; flex-shrink:0;
+    accent-color: var(--bio);
+    cursor:pointer;
+  }
+  .terms-check a{ color: var(--bio); text-decoration:underline; }
+
   .submit-btn{
     margin-top:6px;
     width:100%; border:none; border-radius:999px;
@@ -263,6 +276,11 @@
       <div class="char-count"><span id="descCount">0</span> / 300</div>
     </div>
 
+    <label class="terms-check">
+      <input type="checkbox" id="termsCheckbox" />
+      <span><a href="termsofservice.html" target="_blank" rel="noopener">利用規約</a>に同意します</span>
+    </label>
+
     <button type="submit" class="submit-btn" id="submitBtn">
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       海に流す
@@ -335,6 +353,7 @@ const resizeNoteText = document.getElementById('resizeNoteText');
 const titleInput = document.getElementById('titleInput');
 const descInput = document.getElementById('descInput');
 const descCount = document.getElementById('descCount');
+const termsCheckbox = document.getElementById('termsCheckbox');
 const submitBtn = document.getElementById('submitBtn');
 const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
@@ -472,7 +491,22 @@ function uploadToCloudinary(file, onProgress){
   });
 }
 
-async function saveToSupabase({ title, description, video_url }){
+// ----------------------------------------------
+// IPアドレス取得（ipify、失敗時はnullのまま進行）
+// ----------------------------------------------
+async function fetchClientIp(){
+  try{
+    const res = await fetch('https://api.ipify.org?format=json');
+    if(!res.ok) return null;
+    const data = await res.json();
+    return data.ip || null;
+  }catch(err){
+    console.error('IPアドレスの取得に失敗しました。', err);
+    return null;
+  }
+}
+
+async function saveToSupabase({ title, description, video_url, uploaderIp }){
   const res = await fetch(`${SUPABASE_URL}/rest/v1/videos`, {
     method: 'POST',
     headers: {
@@ -481,7 +515,15 @@ async function saveToSupabase({ title, description, video_url }){
       'Content-Type': 'application/json',
       'Prefer': 'return=representation'
     },
-    body: JSON.stringify({ title, description, video_url, uploader_id: USER_ID })
+    body: JSON.stringify({
+      title,
+      description,
+      video_url,
+      uploader_id: USER_ID,
+      uploader_ip: uploaderIp,
+      terms_agreed: true,
+      terms_agreed_at: new Date().toISOString()
+    })
   });
   if(!res.ok){
     const text = await res.text();
@@ -519,6 +561,10 @@ form.addEventListener('submit', async (e) => {
     showError(`この動画は ${selectedVideoWidth}×${selectedVideoHeight} です。フルHD(1920×1080)以下の動画のみ投稿できます。`);
     return;
   }
+  if(!termsCheckbox.checked){
+    showError('投稿するには利用規約への同意が必要です。');
+    return;
+  }
 
   setSubmitting(true);
   progressFill.style.width = '0%';
@@ -531,14 +577,18 @@ form.addEventListener('submit', async (e) => {
       progressPct.textContent = pct + '%';
     });
 
-    progressStage.textContent = 'SeaTubesに保存中…';
+    progressStage.textContent = '情報を確認中…';
     progressFill.style.width = '100%';
     progressPct.textContent = '100%';
+    const uploaderIp = await fetchClientIp();
+
+    progressStage.textContent = 'SeaTubesに保存中…';
 
     await saveToSupabase({
       title,
       description: descInput.value.trim() || null,
-      video_url: cloudRes.secure_url
+      video_url: cloudRes.secure_url,
+      uploaderIp
     });
 
     form.classList.add('hide');
